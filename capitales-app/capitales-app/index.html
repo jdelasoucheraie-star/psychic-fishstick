@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1418">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Capitales">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;-webkit-tap-highlight-color:transparent}[hidden]{display:none!important}*{box-sizing:border-box}</style>
+<title>Capitales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: one-column departure board — a split-flap panel on top, four "gates" (answers) below */
+:root{
+  --bg:#0f1418; --panel:#171e24; --tile:#1f272e; --line:#2a343d;
+  --amber:#ffb627; --fg:#e8ecef; --muted:#8a97a3;
+  --ok:#3ddc84; --ko:#ff5a4e;
+  --board:'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  --ui:'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:17px}
+.wrap{max-width:560px;margin:0 auto;padding:18px 16px 28px;display:flex;flex-direction:column;gap:16px;min-height:100%;box-sizing:border-box}
+header{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.brand{font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:15px;color:var(--amber)}
+.stats{display:flex;gap:14px;font-family:var(--board);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.stats b{color:var(--fg);font-weight:700}
+
+.board{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 12px 16px;display:flex;flex-direction:column;gap:10px}
+.row-label{display:flex;justify-content:space-between;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.flap{display:flex;justify-content:center;gap:2px;min-height:44px;align-items:stretch}
+.tile{position:relative;background:var(--tile);color:var(--amber);font-family:var(--board);font-weight:700;display:flex;align-items:center;justify-content:center;border-radius:3px;line-height:1}
+.tile::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--bg);opacity:.7}
+.tile.sp{background:transparent}
+.tile.sp::after{display:none}
+.ask{font-size:20px;font-weight:600;text-align:center;color:var(--fg)}
+.timer{height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.timer i{display:block;height:100%;width:100%;background:var(--amber);transform-origin:left}
+
+.gates{display:grid;grid-template-columns:1fr;gap:10px}
+.gate{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:14px 14px;font:600 21px/1.15 var(--ui);cursor:pointer;transition:border-color .15s,background .15s}
+.gate:hover:not(:disabled){border-color:var(--amber)}
+.gate:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.gate .tag{flex:none;font:700 12px var(--board);color:var(--muted);letter-spacing:.08em;border:1px solid var(--line);border-radius:3px;padding:4px 6px}
+.gate span:last-child{min-width:0}
+.gate.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,var(--panel))}
+.gate.ok .tag{color:var(--ok);border-color:var(--ok)}
+.gate.ko{border-color:var(--ko);background:color-mix(in srgb,var(--ko) 14%,var(--panel))}
+.gate.ko .tag{color:var(--ko);border-color:var(--ko)}
+.gate:disabled{cursor:default}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:7px 13px;font:600 16px var(--ui);cursor:pointer}
+.chip[aria-pressed="true"]{color:var(--bg);background:var(--amber);border-color:var(--amber)}
+.chip:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.label{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.setup{display:flex;flex-direction:column;gap:10px}
+.go{background:var(--amber);color:var(--bg);border:0;border-radius:6px;padding:15px;font:700 20px var(--ui);letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.go:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.go.alt{background:transparent;color:var(--fg);border:1px solid var(--line)}
+
+.result{font-family:var(--board);text-align:center;display:flex;flex-direction:column;gap:4px}
+.result .big{font-size:44px;font-weight:700;color:var(--amber);font-variant-numeric:tabular-nums}
+.result small{color:var(--muted);font-size:13px}
+.misses{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.misses li{display:flex;justify-content:space-between;gap:12px;padding:9px 2px;border-bottom:1px solid var(--line);font-size:18px}
+.misses li span:last-child{color:var(--amber);text-align:right}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bigflag{font-size:84px;line-height:1.05;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.gate .fl{font-size:42px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.toast{text-align:center;font-family:var(--board);font-size:13px;color:var(--muted);min-height:18px}
+@media (prefers-reduced-motion:reduce){.timer i{transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Départs · Capitales</div>
+    <div class="stats"><span>Q <b id="qn">–</b></span><span>Série <b id="streak">0</b></span><span>Pts <b id="pts">0</b></span></div>
+  </header>
+
+  <section class="board" aria-live="polite">
+    <div class="row-label"><span id="lblTop">Destination</span><span id="lblRegion">Monde</span></div>
+    <div class="flap" id="flap"></div>
+    <div class="ask" id="ask">10 questions, 10 secondes chacune</div>
+    <div class="timer"><i id="bar"></i></div>
+  </section>
+
+  <!-- Écran d'accueil -->
+  <div id="home" class="setup">
+    <div class="label">Zone</div>
+    <div class="chips" id="zones"></div>
+    <div class="label">Sens</div>
+    <div class="chips" id="dirs">
+      <button class="chip" id="d1" aria-pressed="true" data-d="pc">Pays → capitale</button>
+      <button class="chip" id="d2" aria-pressed="false" data-d="cp">Capitale → pays</button>
+      <button class="chip" id="d3" aria-pressed="false" data-d="fp">Drapeau → pays</button>
+      <button class="chip" id="d4" aria-pressed="false" data-d="pf">Pays → drapeau</button>
+    </div>
+    <div class="label">Questions par série</div>
+    <div class="chips" id="lens">
+      <button class="chip" id="n10" aria-pressed="true" data-n="10">10</button>
+      <button class="chip" id="n20" aria-pressed="false" data-n="20">20</button>
+      <button class="chip" id="n30" aria-pressed="false" data-n="30">30</button>
+      <button class="chip" id="nall" aria-pressed="false" data-n="0">Toutes</button>
+    </div>
+    <button class="go" id="start">Embarquer</button>
+    <div class="toast" id="best"></div>
+  </div>
+
+  <!-- Jeu -->
+  <div id="game" class="gates" hidden></div>
+  <div class="toast" id="feedback" hidden></div>
+
+  <!-- Fin -->
+  <div id="end" class="setup" hidden>
+    <div class="result"><div class="big" id="final">0</div><small id="finalSub"></small></div>
+    <div class="label" id="missLbl">À revoir</div>
+    <ul class="misses" id="misses"></ul>
+    <div class="btns"><button class="go" id="again">Rejouer</button><button class="go alt" id="menu">Changer de zone</button></div>
+  </div>
+</div>
+
+<script>
+const D = {
+Europe:[["France","Paris"],["Allemagne","Berlin"],["Espagne","Madrid"],["Italie","Rome"],["Portugal","Lisbonne"],["Royaume-Uni","Londres"],["Irlande","Dublin"],["Belgique","Bruxelles"],["Pays-Bas","Amsterdam"],["Luxembourg","Luxembourg"],["Suisse","Berne"],["Autriche","Vienne"],["Pologne","Varsovie"],["Tchéquie","Prague"],["Slovaquie","Bratislava"],["Hongrie","Budapest"],["Roumanie","Bucarest"],["Bulgarie","Sofia"],["Grèce","Athènes"],["Croatie","Zagreb"],["Slovénie","Ljubljana"],["Serbie","Belgrade"],["Bosnie-Herzégovine","Sarajevo"],["Monténégro","Podgorica"],["Albanie","Tirana"],["Macédoine du Nord","Skopje"],["Danemark","Copenhague"],["Norvège","Oslo"],["Suède","Stockholm"],["Finlande","Helsinki"],["Islande","Reykjavik"],["Estonie","Tallinn"],["Lettonie","Riga"],["Lituanie","Vilnius"],["Ukraine","Kiev"],["Biélorussie","Minsk"],["Moldavie","Chisinau"],["Russie","Moscou"],["Malte","La Valette"],["Chypre","Nicosie"],["Andorre","Andorre-la-Vieille"],["Liechtenstein","Vaduz"]],
+Asie:[["Chine","Pékin"],["Japon","Tokyo"],["Corée du Sud","Séoul"],["Corée du Nord","Pyongyang"],["Inde","New Delhi"],["Pakistan","Islamabad"],["Bangladesh","Dacca"],["Népal","Katmandou"],["Thaïlande","Bangkok"],["Vietnam","Hanoï"],["Cambodge","Phnom Penh"],["Laos","Vientiane"],["Birmanie","Naypyidaw"],["Malaisie","Kuala Lumpur"],["Philippines","Manille"],["Mongolie","Oulan-Bator"],["Kazakhstan","Astana"],["Ouzbékistan","Tachkent"],["Afghanistan","Kaboul"],["Iran","Téhéran"],["Irak","Bagdad"],["Syrie","Damas"],["Liban","Beyrouth"],["Jordanie","Amman"],["Arabie saoudite","Riyad"],["Émirats arabes unis","Abou Dabi"],["Qatar","Doha"],["Oman","Mascate"],["Yémen","Sanaa"],["Turquie","Ankara"],["Géorgie","Tbilissi"],["Arménie","Erevan"],["Azerbaïdjan","Bakou"],["Bhoutan","Thimphou"]],
+Afrique:[["Maroc","Rabat"],["Algérie","Alger"],["Tunisie","Tunis"],["Libye","Tripoli"],["Égypte","Le Caire"],["Sénégal","Dakar"],["Mali","Bamako"],["Niger","Niamey"],["Burkina Faso","Ouagadougou"],["Côte d'Ivoire","Yamoussoukro"],["Ghana","Accra"],["Nigeria","Abuja"],["Cameroun","Yaoundé"],["Gabon","Libreville"],["Congo","Brazzaville"],["RD Congo","Kinshasa"],["Éthiopie","Addis-Abeba"],["Kenya","Nairobi"],["Ouganda","Kampala"],["Rwanda","Kigali"],["Tanzanie","Dodoma"],["Madagascar","Antananarivo"],["Mozambique","Maputo"],["Angola","Luanda"],["Zambie","Lusaka"],["Zimbabwe","Harare"],["Botswana","Gaborone"],["Namibie","Windhoek"],["Soudan","Khartoum"],["Somalie","Mogadiscio"],["Mauritanie","Nouakchott"],["Guinée","Conakry"],["Bénin","Porto-Novo"],["Togo","Lomé"],["Tchad","N'Djaména"],["Malawi","Lilongwe"]],
+Amériques:[["États-Unis","Washington"],["Canada","Ottawa"],["Mexique","Mexico"],["Cuba","La Havane"],["Haïti","Port-au-Prince"],["Jamaïque","Kingston"],["Rép. dominicaine","Saint-Domingue"],["Panama","Panama"],["Costa Rica","San José"],["Nicaragua","Managua"],["Honduras","Tegucigalpa"],["Salvador","San Salvador"],["Guatemala","Guatemala"],["Colombie","Bogota"],["Venezuela","Caracas"],["Équateur","Quito"],["Pérou","Lima"],["Brésil","Brasilia"],["Argentine","Buenos Aires"],["Chili","Santiago"],["Uruguay","Montevideo"],["Paraguay","Asuncion"],["Guyana","Georgetown"],["Suriname","Paramaribo"]],
+Océanie:[["Australie","Canberra"],["Nouvelle-Zélande","Wellington"],["Fidji","Suva"],["Papouasie-N.-Guinée","Port Moresby"],["Samoa","Apia"],["Tonga","Nukualofa"],["Vanuatu","Port-Vila"]]
+};
+const C={
+Europe:"FR DE ES IT PT GB IE BE NL LU CH AT PL CZ SK HU RO BG GR HR SI RS BA ME AL MK DK NO SE FI IS EE LV LT UA BY MD RU MT CY AD LI",
+Asie:"CN JP KR KP IN PK BD NP TH VN KH LA MM MY PH MN KZ UZ AF IR IQ SY LB JO SA AE QA OM YE TR GE AM AZ BT",
+Afrique:"MA DZ TN LY EG SN ML NE BF CI GH NG CM GA CG CD ET KE UG RW TZ MG MZ AO ZM ZW BW NA SD SO MR GN BJ TG TD MW",
+Amériques:"US CA MX CU HT JM DO PA CR NI HN SV GT CO VE EC PE BR AR CL UY PY GY SR",
+Océanie:"AU NZ FJ PG WS TO VU"
+};
+const flagOf=code=>String.fromCodePoint(...[...code].map(ch=>0x1F1E6+ch.charCodeAt(0)-65));
+const ZONES=["Monde",...Object.keys(D)];
+const ALL=Object.entries(D).flatMap(([z,l])=>l.map(([c,k],j)=>({c,k,z,f:flagOf(C[z].split(" ")[j])})));
+const isFlag=()=>dir==="fp"||dir==="pf";
+const reveal=q=>isFlag()?`${q.f}  ${q.c} · ${q.k}`:`${q.c} → ${q.k}`;
+let ROUND=10; const TIME=10000;
+let zone="Monde", dir="pc", qs=[], i=0, pts=0, streak=0, bestStreak=0, good=0, misses=[], t0=0, raf=0, locked=false;
+const $=id=>document.getElementById(id);
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const shuffle=a=>{for(let j=a.length-1;j>0;j--){const r=Math.random()*(j+1)|0;[a[j],a[r]]=[a[r],a[j]]}return a};
+
+// Split-flap
+const CH="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+function flap(text){
+  const el=$("flap"), s=text.toUpperCase(), n=s.length;
+  const w=el.clientWidth||320, size=Math.max(14,Math.min(34,Math.floor((w-2*(n-1))/n)));
+  el.innerHTML="";
+  [...s].forEach((ch,idx)=>{
+    const t=document.createElement("span");
+    t.className="tile"+(ch===" "?" sp":"");
+    t.style.cssText=`width:${size}px;height:${Math.round(size*1.35)}px;font-size:${Math.round(size*.72)}px`;
+    el.appendChild(t);
+    if(ch===" "){return}
+    if(reduce){t.textContent=ch;return}
+    let k=0; const steps=4+idx%5;
+    const iv=setInterval(()=>{ if(k++>=steps){clearInterval(iv);t.textContent=ch} else t.textContent=CH[Math.random()*26|0] },38);
+  });
+}
+
+function chips(){
+  const z=$("zones"); z.innerHTML="";
+  ZONES.forEach((name,idx)=>{
+    const b=document.createElement("button");
+    b.className="chip"; b.id="z"+idx; b.textContent=name; b.setAttribute("aria-pressed",name===zone);
+    b.onclick=()=>{zone=name;chips();showBest();$("lblRegion").textContent=zone};
+    z.appendChild(b);
+  });
+}
+$("dirs").onclick=e=>{const b=e.target.closest(".chip"); if(!b)return; dir=b.dataset.d;
+  document.querySelectorAll("#dirs .chip").forEach(c=>c.setAttribute("aria-pressed",c===b)); showBest()};
+$("lens").onclick=e=>{const b=e.target.closest(".chip"); if(!b)return; ROUND=+b.dataset.n;
+  document.querySelectorAll("#lens .chip").forEach(c=>c.setAttribute("aria-pressed",c===b)); showBest()};
+const poolSize=()=>zone==="Monde"?ALL.length:D[zone].length;
+const roundLen=()=>ROUND?Math.min(ROUND,poolSize()):poolSize();
+const bestKey=()=>`cap-best-${zone}-${dir}-${ROUND||"all"}`;
+function intro(){return `${roundLen()} questions, 10 secondes chacune`}
+function showBest(){const b=store.get(bestKey()); $("ask").textContent=intro();
+  $("best").textContent=b?`Record ${zone} (${ROUND||"toutes"}) : ${b} pts`:"Plus tu réponds vite, plus tu marques."}
+
+function start(){
+  const pool=zone==="Monde"?ALL:ALL.filter(x=>x.z===zone);
+  qs=shuffle([...pool]).slice(0,roundLen()); i=0;pts=0;streak=0;bestStreak=0;good=0;misses=[];
+  $("home").hidden=true;$("end").hidden=true;$("game").hidden=false;$("feedback").hidden=false;
+  $("pts").textContent=0;$("streak").textContent=0;
+  $("lblRegion").textContent=zone; next();
+}
+function next(){
+  if(i>=qs.length) return finish();
+  locked=false;
+  const q=qs[i], same=ALL.filter(x=>x!==q&&(x.z===q.z));
+  const pick={pc:"k",cp:"c",fp:"c",pf:"f"}[dir];
+  const opts=shuffle([q,...shuffle(same).filter(x=>x[pick]!==q[pick]).slice(0,3)]);
+  $("lblTop").textContent=dir==="cp"?"Escale":"Destination";
+  if(dir==="fp") $("flap").innerHTML=`<span class="bigflag" role="img" aria-label="Drapeau à identifier">${q.f}</span>`;
+  else flap(dir==="cp"?q.k:q.c);
+  $("ask").textContent={pc:"Quelle est sa capitale ?",cp:"Capitale de quel pays ?",fp:"Quel est ce pays ?",pf:"Quel est son drapeau ?"}[dir];
+  $("qn").textContent=`${i+1}/${qs.length}`; $("feedback").textContent="";
+  const g=$("game"); g.innerHTML="";
+  opts.forEach((o,idx)=>{
+    const b=document.createElement("button");
+    b.className="gate"; b.id="g"+idx; b.dataset.ok=o===q?"1":"";
+    b.innerHTML=`<span class="tag">PORTE ${"ABCD"[idx]}</span><span></span>`;
+    b.lastChild.textContent=o[pick];
+    if(pick==="f") b.lastChild.className="fl";
+    b.onclick=()=>answer(b);
+    g.appendChild(b);
+  });
+  t0=performance.now(); cancelAnimationFrame(raf); tick();
+}
+function tick(){
+  const left=Math.max(0,TIME-(performance.now()-t0));
+  $("bar").style.transform=`scaleX(${left/TIME})`;
+  if(left<=0) return answer(null);
+  raf=requestAnimationFrame(tick);
+}
+function answer(btn){
+  if(locked)return; locked=true; cancelAnimationFrame(raf);
+  const left=Math.max(0,TIME-(performance.now()-t0)), q=qs[i];
+  const gates=[...document.querySelectorAll(".gate")];
+  gates.forEach(b=>{b.disabled=true; if(b.dataset.ok)b.classList.add("ok")});
+  const right=btn&&btn.dataset.ok;
+  if(right){
+    streak++;good++;bestStreak=Math.max(bestStreak,streak);
+    let gain=50+Math.round(left/TIME*50); if(streak>=3)gain=Math.round(gain*1.25);
+    pts+=gain; $("feedback").textContent=`+${gain}`+(streak>=3?` · série ×${streak}`:"");
+  }else{
+    if(btn)btn.classList.add("ko");
+    streak=0; misses.push(q);
+    $("feedback").textContent=btn?reveal(q):`Temps écoulé · ${reveal(q)}`;
+  }
+  $("pts").textContent=pts;$("streak").textContent=streak;
+  i++; setTimeout(next,right?900:1900);
+}
+function finish(){
+  $("game").hidden=true;$("feedback").hidden=true;$("end").hidden=false;
+  $("bar").style.transform="scaleX(0)";
+  const prev=+store.get(bestKey())||0, rec=pts>prev; if(rec)store.set(bestKey(),pts);
+  const r=good/qs.length;
+  flap(rec?"Record":r>=.8?"Bravo":r>=.5?"Pas mal":"A revoir");
+  $("ask").textContent=`${good}/${qs.length} bonnes réponses`;
+  $("final").textContent=pts;
+  $("finalSub").textContent=`Meilleure série : ${bestStreak} · Record ${zone} : ${Math.max(prev,pts)}`;
+  const ul=$("misses"); ul.innerHTML="";
+  $("missLbl").textContent=misses.length?"À revoir":"Sans faute";
+  misses.forEach(m=>{const li=document.createElement("li");li.innerHTML="<span></span><span></span>";li.firstChild.textContent=`${m.f}  ${m.c}`;li.lastChild.textContent=m.k;ul.appendChild(li)});
+}
+$("start").onclick=start; $("again").onclick=start;
+$("menu").onclick=()=>{$("end").hidden=true;$("home").hidden=false;flap("Capitales");$("qn").textContent="–";showBest()};
+
+chips(); showBest();
+requestAnimationFrame(()=>flap("Capitales"));
+addEventListener("resize",()=>{});
+</script>
+<script>if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));</script>
+</body>
+</html>
